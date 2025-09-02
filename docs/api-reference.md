@@ -1,6 +1,6 @@
 # API Reference
 
-## POST /api/start-verification
+## POST https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud/start-verification
 
 Starts the verification flow.
 
@@ -14,7 +14,7 @@ Starts the verification flow.
 -   `validation_token` (string): A unique token for the verification flow.
 -   `whatsapp_url` (string): A WhatsApp URL that the user can use to complete the verification.
 
-## POST /api/check-verification-status
+## POST https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud/check-verification-status
 
 Checks the verification status.
 
@@ -27,3 +27,15 @@ Checks the verification status.
 
 -   `status` (string): The verification status. Can be `pending`, `verified`, `failed`, or `expired`.
 -   `validated_phone_number` (string): The phone number that was verified.
+
+## GET https://phone-verif.com/api/generate-qr
+
+Generates a QR code.
+
+**Query Parameters:**
+
+-   `url` (string, required): The URL to encode in the QR code.
+
+**Response:**
+
+An SVG image of the QR code.
