@@ -4,7 +4,96 @@ info:
   description: API for verifying phone numbers.
   version: 1.0.0
 servers:
-  - url: https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud/startFlow
+  - url: https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - code
+        - http_code
+      properties:
+        error:
+          type: string
+          description: Machine-readable error identifier
+          example: "api_key_required"
+        message:
+          type: string
+          description: Human-readable error description
+          example: "API key is required to access this endpoint"
+        code:
+          type: integer
+          description: Internal error code
+          example: 1001
+        http_code:
+          type: integer
+          description: HTTP status code
+          example: 400
+    
+    VerificationStartResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: Unique session identifier
+          example: "abc123-def456"
+        validation_token:
+          type: string
+          description: Token for validation
+          example: "xyz789"
+        validity_timestamp:
+          type: integer
+          description: Timestamp when session expires
+          example: 1693737600000
+        web:
+          type: string
+          description: Web URL for verification
+          example: "https://phone-verif.com/check?token=xyz789"
+        next:
+          type: string
+          description: Next step URL
+          example: "https://example.com/check-verification-status?token=xyz789"
+        whatsapp_number:
+          type: string
+          description: WhatsApp number for verification
+          example: "1234567890"
+        whatsapp_deeplink:
+          type: string
+          description: WhatsApp deep link
+          example: "https://wa.me/1234567890?text=Verification%20token%3A%20%5Bxyz789%5D"
+    
+    VerificationStatusResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: Session identifier
+          example: "abc123-def456"
+        validation_token:
+          type: string
+          description: Validation token
+          example: "xyz789"
+        status:
+          type: string
+          enum: [pending, verified, failed, expired]
+          description: Current verification status
+          example: "pending"
+        validated_phone_number:
+          type: string
+          description: Verified phone number (if status is verified)
+          example: "+1234567890"
+        validity_timestamp:
+          type: integer
+          description: Session expiry timestamp
+          example: 1693737600000
+        web:
+          type: string
+          description: Web URL for this verification
+          example: "https://phone-verif.com/check?token=xyz789"
+
 paths:
   /start-verification:
     get:
@@ -40,15 +129,74 @@ paths:
           description: Whether the session require an API key to read the status
       responses:
         '200':
-          description: Flow started successfully.
+          description: Flow started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStartResponse'
         '400':
-          description: Bad request.
+          description: Bad request - API key required or session/token parameter issues
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                api_key_required:
+                  summary: API key required
+                  value:
+                    error: "api_key_required"
+                    message: "API key is required to access this endpoint"
+                    code: 1001
+                    http_code: 400
         '403':
-          description: Forbidden.
+          description: Forbidden - API key usage limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                usage_limit_exceeded:
+                  summary: Usage limit exceeded
+                  value:
+                    error: "api_key_usage_limit_exceeded"
+                    message: "The API key has reached its usage limit"
+                    code: 1004
+                    http_code: 403
         '404':
-          description: Not found.
+          description: Not found - API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                api_key_not_found:
+                  summary: API key not found
+                  value:
+                    error: "api_key_not_found"
+                    message: "The provided API key was not found in our system"
+                    code: 1003
+                    http_code: 404
         '500':
-          description: Internal server error.
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation_error:
+                  summary: API key validation error
+                  value:
+                    error: "api_key_validation_error"
+                    message: "An error occurred while validating the API key"
+                    code: 1002
+                    http_code: 500
+                internal_error:
+                  summary: Internal server error
+                  value:
+                    error: "internal_server_error"
+                    message: "An internal server error occurred"
+                    code: 5001
+                    http_code: 500
     post:
       summary: Start verification flow
       description: Initiates a phone number verification flow.
@@ -65,56 +213,308 @@ paths:
             schema:
               type: object
               properties:
+                key:
+                  type: string
+                  description: API key (alternative to header)
                 session_id:
                   type: string
+                  description: Unique session identifier
                 callback_url:
                   type: string
+                  description: URL to redirect after verification
                 is_public:
                   type: boolean
+                  description: Whether session requires API key to read status
       responses:
         '200':
-          description: Flow started successfully.
+          description: Flow started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStartResponse'
         '400':
-          description: Bad request.
+          description: Bad request - API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                api_key_required:
+                  summary: API key required
+                  value:
+                    error: "api_key_required"
+                    message: "API key is required to access this endpoint"
+                    code: 1001
+                    http_code: 400
         '403':
-          description: Forbidden.
+          description: Forbidden - API key usage limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                usage_limit_exceeded:
+                  summary: Usage limit exceeded
+                  value:
+                    error: "api_key_usage_limit_exceeded"
+                    message: "The API key has reached its usage limit"
+                    code: 1004
+                    http_code: 403
         '404':
-          description: Not found.
+          description: Not found - API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                api_key_not_found:
+                  summary: API key not found
+                  value:
+                    error: "api_key_not_found"
+                    message: "The provided API key was not found in our system"
+                    code: 1003
+                    http_code: 404
         '500':
-          description: Internal server error.
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation_error:
+                  summary: API key validation error
+                  value:
+                    error: "api_key_validation_error"
+                    message: "An error occurred while validating the API key"
+                    code: 1002
+                    http_code: 500
+                internal_error:
+                  summary: Internal server error
+                  value:
+                    error: "internal_server_error"
+                    message: "An internal server error occurred"
+                    code: 5001
+                    http_code: 500
   /check-verification-status:
     get:
       summary: Check verification status
-      description: Checks the status of a verification flow.
+      description: Checks the status of a verification flow using either validation token or session ID.
       parameters:
         - name: token
           in: query
           schema:
             type: string
-          description: The validation token.
+          description: The validation token (alternative to session_id)
+        - name: validation_token
+          in: query
+          schema:
+            type: string
+          description: The validation token (alternative name for token)
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: The session ID (required if no token provided)
         - name: key
           in: query
           required: false
           schema:
             type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
+          description: Your API key (required for session_id access or private sessions)
+        - name: api_key
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Alternative parameter name for API key
         - name: x-api-key
           in: header
           required: false
           schema:
             type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
-        - name: session_id
-          in: query
-          schema:
-            type: string
-          description: The session ID.
+          description: Your API key in header format
       responses:
         '200':
-          description: Status retrieved successfully.
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatusResponse'
         '400':
-          description: Bad request.
+          description: Bad request - Missing required parameters or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                session_or_token_required:
+                  summary: Session ID or token required
+                  value:
+                    error: "session_id_or_token_required"
+                    message: "Either session ID or validation token is required"
+                    code: 2001
+                    http_code: 400
+                invalid_token:
+                  summary: Invalid validation token
+                  value:
+                    error: "invalid_validation_token"
+                    message: "The provided validation token is invalid or expired"
+                    code: 2002
+                    http_code: 400
+                api_key_required:
+                  summary: API key required
+                  value:
+                    error: "api_key_required"
+                    message: "API key is required to access this endpoint"
+                    code: 1001
+                    http_code: 400
         '403':
-          description: Forbidden.
+          description: Forbidden - Access denied to session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                access_forbidden:
+                  summary: Access forbidden
+                  value:
+                    error: "access_forbidden"
+                    message: "Access to this session is forbidden"
+                    code: 2004
+                    http_code: 403
         '404':
-          description: Not found.
+          description: Not found - Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                session_not_found:
+                  summary: Session not found
+                  value:
+                    error: "session_not_found"
+                    message: "The verification session was not found"
+                    code: 2003
+                    http_code: 404
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                internal_error:
+                  summary: Internal server error
+                  value:
+                    error: "internal_server_error"
+                    message: "An internal server error occurred"
+                    code: 5001
+                    http_code: 500
+    post:
+      summary: Check verification status (POST)
+      description: Checks the status of a verification flow using POST method.
+      parameters:
+        - name: x-api-key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Your API key in header format
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: The validation token
+                validation_token:
+                  type: string
+                  description: Alternative parameter name for validation token
+                session_id:
+                  type: string
+                  description: The session ID
+                key:
+                  type: string
+                  description: Your API key
+                api_key:
+                  type: string
+                  description: Alternative parameter name for API key
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatusResponse'
+        '400':
+          description: Bad request - Missing required parameters or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                session_or_token_required:
+                  summary: Session ID or token required
+                  value:
+                    error: "session_id_or_token_required"
+                    message: "Either session ID or validation token is required"
+                    code: 2001
+                    http_code: 400
+                invalid_token:
+                  summary: Invalid validation token
+                  value:
+                    error: "invalid_validation_token"
+                    message: "The provided validation token is invalid or expired"
+                    code: 2002
+                    http_code: 400
+                api_key_required:
+                  summary: API key required
+                  value:
+                    error: "api_key_required"
+                    message: "API key is required to access this endpoint"
+                    code: 1001
+                    http_code: 400
+        '403':
+          description: Forbidden - Access denied to session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                access_forbidden:
+                  summary: Access forbidden
+                  value:
+                    error: "access_forbidden"
+                    message: "Access to this session is forbidden"
+                    code: 2004
+                    http_code: 403
+        '404':
+          description: Not found - Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                session_not_found:
+                  summary: Session not found
+                  value:
+                    error: "session_not_found"
+                    message: "The verification session was not found"
+                    code: 2003
+                    http_code: 404
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                internal_error:
+                  summary: Internal server error
+                  value:
+                    error: "internal_server_error"
+                    message: "An internal server error occurred"
+                    code: 5001
+                    http_code: 500
