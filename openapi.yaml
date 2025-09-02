@@ -1,0 +1,120 @@
+openapi: 3.0.0
+info:
+  title: Phone Verification API
+  description: API for verifying phone numbers.
+  version: 1.0.0
+servers:
+  - url: https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud/startFlow
+paths:
+  /start-verification:
+    get:
+      summary: Start verification flow
+      description: Initiates a phone number verification flow.
+      parameters:
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Your API key. One of `key` or `x-api-key` must be present.
+        - name: x-api-key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Your API key. One of `key` or `x-api-key` must be present.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: A unique identifier for the session. Will be created randomly if null
+        - name: callback_url
+          in: query
+          schema:
+            type: string
+          description: The URL to which the user will be redirected after verification.
+        - name: is_public
+          in: query
+          schema:
+            type: boolean
+          description: Whether the session require an API key to read the status
+      responses:
+        '200':
+          description: Flow started successfully.
+        '400':
+          description: Bad request.
+        '403':
+          description: Forbidden.
+        '404':
+          description: Not found.
+        '500':
+          description: Internal server error.
+    post:
+      summary: Start verification flow
+      description: Initiates a phone number verification flow.
+      parameters:
+        - name: x-api-key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Your API key. One of `key` or `x-api-key` must be present.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                callback_url:
+                  type: string
+                is_public:
+                  type: boolean
+      responses:
+        '200':
+          description: Flow started successfully.
+        '400':
+          description: Bad request.
+        '403':
+          description: Forbidden.
+        '404':
+          description: Not found.
+        '500':
+          description: Internal server error.
+  /check-verification-status:
+    get:
+      summary: Check verification status
+      description: Checks the status of a verification flow.
+      parameters:
+        - name: token
+          in: query
+          schema:
+            type: string
+          description: The validation token.
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Your API key. One of `key` or `x-api-key` must be present.
+        - name: x-api-key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Your API key. One of `key` or `x-api-key` must be present.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: The session ID.
+      responses:
+        '200':
+          description: Status retrieved successfully.
+        '400':
+          description: Bad request.
+        '403':
+          description: Forbidden.
+        '404':
+          description: Not found.
