@@ -4,7 +4,7 @@ info:
   description: API for verifying phone numbers.
   version: 1.0.0
 servers:
-  - url: https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud/startFlow
+  - url: https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud
 components:
   schemas:
     ErrorResponse:
