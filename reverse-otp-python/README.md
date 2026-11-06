@@ -28,7 +28,7 @@ This repository contains a Python sample for integrating with the Reverse OTP se
 4.  **Run the sample:**
 
     ```bash
-    python examples/basic_verification.py
+    python -m examples.basic_verification
     ```
 
 ## Running Locally
@@ -40,4 +40,4 @@ To run the sample locally, you will need to have Python and pip installed.
 
 ## Documentation
 
-For more information, please refer to the [official documentation](https://phone-verif.com/docs).
+For more information, please refer to the [official documentation](https://phone-verif.com/integration-guide).

@@ -26,14 +26,14 @@ class ViewController: UIViewController {
     }
 
     func startVerification(sessionId: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
-        let url = URL(string: "https://phone-verif.com/api/start-verification")!
+        let url = URL(string: "https://api.phone-verif.com/start-verification")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
 
         let body: [String: Any] = [
-            "session_id": sessionId,
-            "api_key": apiKey
+            "session_id": sessionId
         ]
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
