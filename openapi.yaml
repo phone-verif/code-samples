@@ -4,7 +4,7 @@ info:
   description: API for verifying phone numbers.
   version: 1.0.0
 servers:
-  - url: https://neru-5d5813f3-phone-verif-prod.euw1.runtime.vonage.cloud
+  - url: https://api.phone-verif.com
 components:
   schemas:
     ErrorResponse:
@@ -67,6 +67,50 @@ components:
           type: string
           nullable: true
           description: The verified phone number
+        provider:
+          type: string
+          enum: [telegram]
+          description: Present on Telegram sessions only
+        telegram:
+          $ref: '#/components/schemas/TelegramIdentity'
+
+    TelegramIdentity:
+      type: object
+      description: The Telegram account that completed the session. Present on verified `flow=phone` Telegram sessions only.
+      properties:
+        user_id:
+          type: integer
+          format: int64
+          description: Numeric Telegram account ID, not the Phone-Verif `user_id`
+        username:
+          type: string
+          nullable: true
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+
+    TelegramDetails:
+      type: object
+      description: Returned in place of `whatsapp` and `sms` on a Telegram session
+      properties:
+        bot_username:
+          type: string
+          description: Username of the Telegram bot
+        deeplink:
+          type: string
+          format: uri
+          description: Tracked link that opens the bot
+        qr_code_url:
+          type: string
+          format: uri
+          description: Tracked link to encode as a QR code
+        direct_link:
+          type: string
+          format: uri
+          description: Untracked t.me link that opens the bot
 
     WhatsAppDetails:
       type: object
@@ -105,6 +149,8 @@ components:
           $ref: '#/components/schemas/SessionDetails'
         whatsapp:
           $ref: '#/components/schemas/WhatsAppDetails'
+        telegram:
+          $ref: '#/components/schemas/TelegramDetails'
         links:
           $ref: '#/components/schemas/LinksDetails'
 
@@ -194,6 +240,13 @@ paths:
             type: boolean
             default: true
           description: Whether the session require an API key to read the status
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [whatsapp, telegram]
+            default: whatsapp
+          description: Verification channel. A Telegram session returns `telegram` instead of `whatsapp` and `sms`. `telegram` can't be combined with `flow=age`.
       responses:
         '200':
           description: Flow started successfully
@@ -221,6 +274,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Telegram is unavailable (`telegram_unavailable`, only when `provider=telegram`)
           content:
             application/json:
               schema:
@@ -252,6 +311,11 @@ paths:
                   type: boolean
                   default: true
                   description: Whether the session require an API key to read the status
+                provider:
+                  type: string
+                  enum: [whatsapp, telegram]
+                  default: whatsapp
+                  description: Verification channel. A Telegram session returns `telegram` instead of `whatsapp` and `sms`. `telegram` can't be combined with `flow=age`.
       responses:
         '200':
           description: Flow started successfully
@@ -279,6 +343,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Telegram is unavailable (`telegram_unavailable`, only when `provider=telegram`)
           content:
             application/json:
               schema:
