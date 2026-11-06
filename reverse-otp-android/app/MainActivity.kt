@@ -25,11 +25,12 @@ class MainActivity : AppCompatActivity() {
     fun startVerification(sessionId: String) {
         val client = OkHttpClient()
 
-        val json = """{"session_id": "$sessionId", "api_key": "$apiKey"}"""
+        val json = """{"session_id": "$sessionId"}"""
         val body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json)
 
         val request = Request.Builder()
-            .url("https://phone-verif.com/api/start-verification")
+            .url("https://api.phone-verif.com/start-verification")
+            .addHeader("X-API-Key", apiKey)
             .post(body)
             .build()
 
