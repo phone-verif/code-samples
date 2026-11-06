@@ -40,4 +40,4 @@ To run the sample locally, you will need to have Node.js and npm installed.
 
 ## Documentation
 
-For more information, please refer to the [official documentation](https://phone-verif.com/docs).
+For more information, please refer to the [official documentation](https://phone-verif.com/integration-guide).
