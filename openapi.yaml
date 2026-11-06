@@ -1,467 +1,425 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
-  title: Phone Verification API
-  description: API for verifying phone numbers.
-  version: 1.0.0
+  title: Phone-Verif API
+  version: 1.1.0
+  summary: Verify phone numbers with one message from the user.
+  description: |
+    Reverse OTP over WhatsApp, with Telegram as an optional channel. Start a
+    session, show the user a link or QR code, and receive the verified number
+    by signed webhook. Guide: https://phone-verif.com/integration-guide.md
+  license:
+    name: Proprietary
+    url: https://phone-verif.com/terms
+  contact:
+    name: Phone-Verif
+    url: https://phone-verif.com
+externalDocs:
+  description: Integration guide
+  url: https://phone-verif.com/integration-guide
 servers:
   - url: https://api.phone-verif.com
-components:
-  schemas:
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          description: Error type identifier
-        message:
-          type: string
-          description: Human-readable error message
-        code:
-          type: integer
-          description: Internal error code
-        http_code:
-          type: integer
-          description: HTTP status code
-      required:
-        - error
-        - message
-        - code
-        - http_code
-    
-    SessionDetails:
-      type: object
-      properties:
-        session_id:
-          type: string
-          description: Unique session identifier
-        validation_token:
-          type: string
-          description: Token for validation
-        status:
-          type: string
-          enum: [pending, whatsapp_previewed, opened, verified, expired]
-          description: Current session status
-        validity_timestamp:
-          type: integer
-          description: Timestamp when session expires
-        created_at:
-          type: string
-          format: date-time
-          description: When the session was created
-        previewed_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When the WhatsApp preview was viewed
-        opened_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When the verification link was opened
-        verified_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When the phone number was verified
-        validated_phone_number:
-          type: string
-          nullable: true
-          description: The verified phone number
-        provider:
-          type: string
-          enum: [telegram]
-          description: Present on Telegram sessions only
-        telegram:
-          $ref: '#/components/schemas/TelegramIdentity'
-
-    TelegramIdentity:
-      type: object
-      description: The Telegram account that completed the session. Present on verified `flow=phone` Telegram sessions only.
-      properties:
-        user_id:
-          type: integer
-          format: int64
-          description: Numeric Telegram account ID, not the Phone-Verif `user_id`
-        username:
-          type: string
-          nullable: true
-        first_name:
-          type: string
-          nullable: true
-        last_name:
-          type: string
-          nullable: true
-
-    TelegramDetails:
-      type: object
-      description: Returned in place of `whatsapp` and `sms` on a Telegram session
-      properties:
-        bot_username:
-          type: string
-          description: Username of the Telegram bot
-        deeplink:
-          type: string
-          format: uri
-          description: Tracked link that opens the bot
-        qr_code_url:
-          type: string
-          format: uri
-          description: Tracked link to encode as a QR code
-        direct_link:
-          type: string
-          format: uri
-          description: Untracked t.me link that opens the bot
-
-    WhatsAppDetails:
-      type: object
-      properties:
-        number:
-          type: string
-          description: WhatsApp business number
-        deeplink:
-          type: string
-          format: uri
-          description: WhatsApp deep link for verification
-
-    LinksDetails:
-      type: object
-      properties:
-        web:
-          type: string
-          format: uri
-          description: Web URL for verification completion
-
-    StartVerificationResponse:
-      type: object
-      properties:
-        session_id:
-          type: string
-        validation_token:
-          type: string
-        status:
-          type: string
-          enum: [pending, whatsapp_previewed, opened, verified, expired]
-        next:
-          type: string
-          format: uri
-          description: Next step URL (development mode only)
-        session:
-          $ref: '#/components/schemas/SessionDetails'
-        whatsapp:
-          $ref: '#/components/schemas/WhatsAppDetails'
-        telegram:
-          $ref: '#/components/schemas/TelegramDetails'
-        links:
-          $ref: '#/components/schemas/LinksDetails'
-
-    CheckStatusResponse:
-      type: object
-      properties:
-        validation_token:
-          type: string
-        status:
-          type: string
-          enum: [pending, whatsapp_previewed, opened, verified, expired]
-        session_id:
-          type: string
-        validated_phone_number:
-          type: string
-          nullable: true
-        session:
-          $ref: '#/components/schemas/SessionDetails'
-        links:
-          $ref: '#/components/schemas/LinksDetails'
-
+security:
+  - apiKeyHeader: []
+  - apiKeyQuery: []
+tags:
+  - name: Verification
+    description: Start and read verification sessions.
+  - name: Identity
+    description: Link your own user IDs to ours.
+  - name: Account
+    description: Webhook secret, balance and usage.
 paths:
-  /t/{token}:
-    get:
-      summary: Track verification link access
-      description: Handles verification link access and redirects to callback URL. Also tracks WhatsApp previews.
-      parameters:
-        - name: token
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The validation token
-        - name: callback_url
-          in: query
-          schema:
-            type: string
-            format: uri
-          description: Override callback URL for redirect
-      responses:
-        '302':
-          description: Redirect to callback URL
-        '200':
-          description: WhatsApp preview content
-          content:
-            text/html:
-              schema:
-                type: string
-        '404':
-          description: Token not found or invalid
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
   /start-verification:
-    get:
-      summary: Start verification flow
-      description: Initiates a phone number verification flow.
-      parameters:
-        - name: key
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
-        - name: x-api-key
-          in: header
-          required: false
-          schema:
-            type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
-        - name: session_id
-          in: query
-          schema:
-            type: string
-          description: A unique identifier for the session. Will be created randomly if null
-        - name: callback_url
-          in: query
-          schema:
-            type: string
-            format: uri
-          description: The URL to which the user will be redirected after verification.
-        - name: is_public
-          in: query
-          schema:
-            type: boolean
-            default: true
-          description: Whether the session require an API key to read the status
-        - name: provider
-          in: query
-          schema:
-            type: string
-            enum: [whatsapp, telegram]
-            default: whatsapp
-          description: Verification channel. A Telegram session returns `telegram` instead of `whatsapp` and `sms`. `telegram` can't be combined with `flow=age`.
-      responses:
-        '200':
-          description: Flow started successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StartVerificationResponse'
-        '400':
-          description: Bad request - API key required or invalid parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden - API key usage limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: API key not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '503':
-          description: Telegram is unavailable (`TELEGRAM_UNAVAILABLE`, only when `provider=telegram`)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
     post:
-      summary: Start verification flow
-      description: Initiates a phone number verification flow.
+      operationId: startVerification
+      tags: [Verification]
+      summary: Start a verification session
+      description: >-
+        Parameters are accepted in the JSON body or the query string, and the
+        query string wins. Starting an existing session_id again cancels its
+        previous token. `api_key` in the body is not read.
       parameters:
-        - name: x-api-key
-          in: header
-          required: false
-          schema:
-            type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
+        - { name: flow, in: query, schema: { $ref: '#/components/schemas/Flow' } }
+        - { name: provider, in: query, schema: { $ref: '#/components/schemas/Provider' } }
+        - { name: user_id, in: query, schema: { type: string }, description: Required for flow=2fa. Our UUID or your linked external_id. }
+        - { name: min_age, in: query, schema: { type: integer, minimum: 1, maximum: 999 }, description: Only for flow=age. }
+        - { name: reset, in: query, schema: { type: boolean }, description: Only for flow=age. Runs the age check again. }
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                session_id:
-                  type: string
-                  description: A unique identifier for the session. Will be created randomly if null
-                callback_url:
-                  type: string
-                  format: uri
-                  description: The URL to which the user will be redirected after verification.
-                is_public:
-                  type: boolean
-                  default: true
-                  description: Whether the session require an API key to read the status
-                provider:
-                  type: string
-                  enum: [whatsapp, telegram]
-                  default: whatsapp
-                  description: Verification channel. A Telegram session returns `telegram` instead of `whatsapp` and `sms`. `telegram` can't be combined with `flow=age`.
+            schema: { $ref: '#/components/schemas/StartVerificationRequest' }
+            example:
+              session_id: order-4821
+              callback_url: https://your-app.example/verified
       responses:
         '200':
-          description: Flow started successfully
+          description: Session started.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/StartVerificationResponse'
-        '400':
-          description: Bad request - API key required or invalid parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden - API key usage limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: API key not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '503':
-          description: Telegram is unavailable (`TELEGRAM_UNAVAILABLE`, only when `provider=telegram`)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+              schema: { $ref: '#/components/schemas/SessionEnvelope' }
+        '400': { $ref: '#/components/responses/Error' }
+        '402': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /check-verification-status:
     get:
-      summary: Check verification status
-      description: Checks the status of a verification flow.
+      operationId: getVerificationStatus
+      tags: [Verification]
+      summary: Read a session
+      description: >-
+        Send session_id or validation_token. Only sessions created with the same
+        API key can be read. An expired session answers 410.
       parameters:
-        - name: token
-          in: query
-          schema:
-            type: string
-          description: The validation token.
-        - name: key
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
-        - name: x-api-key
-          in: header
-          required: false
-          schema:
-            type: string
-          description: Your API key. One of `key` or `x-api-key` must be present.
-        - name: session_id
-          in: query
-          schema:
-            type: string
-          description: The session ID.
+        - { name: session_id, in: query, schema: { type: string } }
+        - { name: validation_token, in: query, schema: { type: string } }
+        - { name: reveal, in: query, schema: { type: boolean }, description: 'Adds validated_phone_number on login and 2fa, for 1 credit per call.' }
       responses:
         '200':
-          description: Status retrieved successfully
+          description: The session.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CheckStatusResponse'
-        '400':
-          description: Bad request - Session ID or validation token required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden - Access denied to session
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Session not found or invalid validation token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    post:
-      summary: Check verification status (POST)
-      description: Checks the status of a verification flow via POST request.
+              schema: { $ref: '#/components/schemas/SessionEnvelope' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /user-identity:
+    get:
+      operationId: getUserIdentity
+      tags: [Identity]
+      summary: Look up a linked identity
+      description: Send external_id or user_id. Spends no credits.
       parameters:
-        - name: x-api-key
-          in: header
-          required: false
-          schema:
-            type: string
-          description: Your API key.
+        - { name: external_id, in: query, schema: { type: string } }
+        - { name: user_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: The identity.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserIdentity' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: linkUserIdentity
+      tags: [Identity]
+      summary: Link your own user ID
+      description: Spends no credits.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                token:
-                  type: string
-                  description: The validation token
-                session_id:
-                  type: string
-                  description: The session ID
+              allOf:
+                - { $ref: '#/components/schemas/UserIdentity' }
+                - required: [user_id, external_id]
       responses:
         '200':
-          description: Status retrieved successfully
+          description: Linked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserIdentity' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /webhook-secret:
+    get:
+      operationId: getWebhookSecret
+      tags: [Account]
+      summary: Get your webhook signing secret
+      description: Creates the secret on first use.
+      responses:
+        '200':
+          description: The secret.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CheckStatusResponse'
-        '400':
-          description: Bad request - Session ID or validation token required
+                type: object
+                required: [webhook_secret]
+                properties:
+                  webhook_secret: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /credits:
+    get:
+      operationId: getCredits
+      tags: [Account]
+      summary: Read your balance
+      description: Answers 200 even at zero, so it can be polled for alerts.
+      responses:
+        '200':
+          description: The balance.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden - Access denied to session
+              schema: { $ref: '#/components/schemas/Credits' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /usage:
+    get:
+      operationId: getUsage
+      tags: [Account]
+      summary: Read 12 months of usage
+      description: Newest month first. Spends no credits.
+      responses:
+        '200':
+          description: The usage.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Session not found or invalid validation token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+              schema: { $ref: '#/components/schemas/Usage' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+webhooks:
+  verificationSuccess:
+    post:
+      operationId: onVerificationSuccess
+      summary: A message was matched to a session
+      description: >-
+        Retried once, after about 5 seconds, on a network error or a 5xx. Use
+        validation_token as your idempotency key.
+      parameters:
+        - $ref: '#/components/parameters/WebhookSignature'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerificationWebhook' }
+      responses:
+        '200': { description: Received. }
+  ageVerificationResult:
+    post:
+      operationId: onAgeVerificationResult
+      summary: The age provider answered
+      description: Not retried.
+      parameters:
+        - $ref: '#/components/parameters/WebhookSignature'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgeWebhook' }
+      responses:
+        '200': { description: Received. }
+components:
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Recommended. Keep the key on your server.
+    apiKeyQuery:
+      type: apiKey
+      in: query
+      name: key
+      description: For debugging only. URLs end up in logs.
+  parameters:
+    WebhookSignature:
+      name: X-Webhook-Signature
+      in: header
+      required: true
+      description: '`sha256=` followed by the hex HMAC-SHA256 of the raw body, keyed with your webhook secret.'
+      schema: { type: string, pattern: '^sha256=[0-9a-f]{64}$' }
+  responses:
+    Error:
+      description: An error. Branch on the HTTP status.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Flow:
+      type: string
+      enum: [phone, login, 2fa, age]
+      default: phone
+    Provider:
+      type: string
+      enum: [whatsapp, telegram]
+      default: whatsapp
+      description: telegram can't be combined with flow=age.
+    SessionStatus:
+      type: string
+      enum: [pending, qr_code_scanned, whatsapp_previewed, opened, verified, sms_validated]
+      description: Both verified and sms_validated mean success.
+    StartVerificationRequest:
+      type: object
+      properties:
+        session_id:
+          type: string
+          pattern: '^[a-zA-Z0-9-_]+$'
+          description: Generated if omitted. Must be unique.
+        callback_url: { type: string, format: uri, description: Where the user goes after verifying. }
+        flow: { $ref: '#/components/schemas/Flow' }
+        provider: { $ref: '#/components/schemas/Provider' }
+        user_id: { type: string, description: Required for flow=2fa. }
+        min_age: { type: integer, minimum: 1, maximum: 999 }
+        reset: { type: boolean }
+    Session:
+      type: object
+      required: [session_id, validation_token, status]
+      properties:
+        session_id: { type: string }
+        validation_token: { type: string }
+        status: { $ref: '#/components/schemas/SessionStatus' }
+        validity_timestamp: { type: string, format: date-time, description: 'When the session expires, 10 hours after it starts.' }
+        created_at: { type: string, format: date-time }
+        qr_code_scanned_at: { type: [string, 'null'], format: date-time }
+        previewed_at: { type: [string, 'null'], format: date-time }
+        opened_at: { type: [string, 'null'], format: date-time }
+        verified_at: { type: [string, 'null'], format: date-time }
+        success_link_clicked_at: { type: [string, 'null'], format: date-time }
+        whatsapp_message_sent_at: { type: [string, 'null'], format: date-time }
+        whatsapp_message_received_at: { type: [string, 'null'], format: date-time }
+        validated_phone_number:
+          type: [string, 'null']
+          description: Digits only, such as 33612345678. Absent on login, 2fa and age unless revealed.
+        user_id: { type: string, format: uuid, description: Set once verified on flow=phone and flow=login. }
+        is_new_user: { type: boolean, description: flow=login only. }
+        external_id: { type: string, description: 'flow=login only, when linked.' }
+        match: { type: boolean, description: flow=2fa only. False when someone else replied. }
+        age: { $ref: '#/components/schemas/Age' }
+        provider: { type: string, enum: [telegram], description: Present on Telegram sessions only. }
+        telegram: { $ref: '#/components/schemas/TelegramIdentity' }
+    SessionEnvelope:
+      type: object
+      required: [session, links]
+      properties:
+        session: { $ref: '#/components/schemas/Session' }
+        links:
+          type: object
+          properties:
+            web: { type: string, format: uri }
+            age_verification: { type: string, format: uri, description: Present while the age check is pending. }
+        whatsapp:
+          type: object
+          description: Absent on Telegram sessions.
+          properties:
+            number: { type: string }
+            deeplink: { type: string, format: uri, description: 'Records the scan, then opens WhatsApp.' }
+            qr_code_url: { type: string, format: uri, description: Value to encode in a QR code. }
+            direct_link: { type: string, format: uri, description: Opens WhatsApp directly. }
+        sms:
+          type: object
+          description: SMS fallback. Absent on Telegram sessions.
+          properties:
+            number: { type: string }
+            qr_code_url: { type: string }
+            direct_link: { type: string }
+        telegram:
+          type: object
+          description: Present on Telegram sessions only.
+          properties:
+            bot_username: { type: string }
+            deeplink: { type: string, format: uri }
+            qr_code_url: { type: string, format: uri }
+            direct_link: { type: string, format: uri }
+    TelegramIdentity:
+      type: object
+      description: The account that completed a verified flow=phone session.
+      properties:
+        user_id: { type: integer, description: 'Numeric Telegram ID, not our user_id.' }
+        username: { type: [string, 'null'] }
+        first_name: { type: [string, 'null'] }
+        last_name: { type: [string, 'null'] }
+    Age:
+      type: object
+      properties:
+        status: { type: [string, 'null'], enum: [pending, verified, denied, failed, null] }
+        verified: { type: boolean }
+        required: { type: [integer, 'null'] }
+        verified_at: { type: [string, 'null'], format: date-time }
+        provider: { type: [string, 'null'] }
+    VerificationWebhook:
+      type: object
+      required: [event, session_id, validation_token, status]
+      properties:
+        event: { const: verification_success }
+        session_id: { type: string }
+        validation_token: { type: string }
+        status: { $ref: '#/components/schemas/SessionStatus' }
+        created_at: { type: string, format: date-time }
+        qr_code_scanned_at: { type: [string, 'null'], format: date-time }
+        previewed_at: { type: [string, 'null'], format: date-time }
+        opened_at: { type: [string, 'null'], format: date-time }
+        verified_at: { type: [string, 'null'], format: date-time }
+        whatsapp_message_sent_at: { type: [string, 'null'], format: date-time }
+        whatsapp_message_received_at: { type: [string, 'null'], format: date-time }
+        validated_phone_number: { type: string, description: flow=phone only. Digits only. }
+        user_id: { type: string, format: uuid, description: flow=phone and flow=login. }
+        is_new_user: { type: boolean, description: flow=login only. }
+        external_id: { type: string, description: 'flow=login only, when linked.' }
+        match: { type: boolean, description: flow=2fa only. }
+        age: { $ref: '#/components/schemas/Age' }
+        provider: { type: string, enum: [telegram] }
+        telegram: { $ref: '#/components/schemas/TelegramIdentity' }
+    AgeWebhook:
+      type: object
+      required: [event, session_id, validation_token, status, age]
+      properties:
+        event: { const: age_verification_result }
+        session_id: { type: string }
+        validation_token: { type: string }
+        status: { $ref: '#/components/schemas/SessionStatus' }
+        age: { $ref: '#/components/schemas/Age' }
+    UserIdentity:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        external_id: { type: string }
+    Credits:
+      type: object
+      required: [top_up_url, api_key, credits]
+      properties:
+        top_up_url: { type: string, format: uri }
+        api_key:
+          type: object
+          properties:
+            key_prefix: { type: string }
+            name: { type: [string, 'null'] }
+        credits:
+          type: object
+          properties:
+            remaining: { type: [integer, 'null'] }
+            exhausted: { type: boolean }
+            account:
+              type: object
+              properties:
+                available: { type: [integer, 'null'] }
+            key:
+              type: object
+              properties:
+                used: { type: integer }
+                allowed: { type: [integer, 'null'], description: Null when the key has no limit of its own. }
+                remaining: { type: [integer, 'null'] }
+                uncapped: { type: boolean }
+    Usage:
+      type: object
+      properties:
+        months:
+          type: array
+          items:
+            type: object
+            properties:
+              month: { type: string, examples: ['2026-11'] }
+              active_users: { type: integer }
+              active_users_by_flow: { type: [object, 'null'] }
+              verifications:
+                type: object
+                properties:
+                  login: { type: integer }
+                  twofa: { type: integer }
+                  age: { type: integer }
+                  phone: { type: integer }
+        years: { type: array, items: { type: object } }
+        billing:
+          type: object
+          properties:
+            login_monthly_active_users: { type: array, items: { type: object } }
+            twofa_yearly_active_users: { type: array, items: { type: object } }
+    Error:
+      type: object
+      required: [error, message, code, http_code]
+      properties:
+        error: { type: string, description: 'Error name, such as API_KEY_REQUIRED.' }
+        message: { type: string, description: 'Readable message, localized from Accept-Language.' }
+        code: { type: integer, description: Internal error code. }
+        http_code: { type: integer }
+        developer_message: { type: string, description: 'Present on 402, with the top-up link.' }
