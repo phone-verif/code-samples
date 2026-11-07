@@ -67,7 +67,9 @@ X-API-Key: your_api_key
 
 ### Verify through Telegram
 
-Telegram is optional, and WhatsApp stays the default. Add `"provider": "telegram"` to `/start-verification` to verify the number through our Telegram bot.
+Every session is open to WhatsApp, SMS and our Telegram bot by default, and the first channel the user completes wins. The response carries a `telegram` block next to `whatsapp` and `sms`, unless Telegram is unavailable.
+
+Add `"provider": "telegram"` to `/start-verification` to lock a session to the bot, or `"provider": "whatsapp"` to lock it to WhatsApp and SMS.
 
 **Request:**
 
@@ -118,7 +120,7 @@ Show `telegram.deeplink` as a QR code or a button. The user opens the bot, press
 }
 ```
 
-A Telegram token only works in the bot, so it's refused on WhatsApp and SMS. `flow=age` isn't available with `provider=telegram`. If Telegram is unavailable, the call returns `503`. You can then call `/start-verification` again without `provider` to use WhatsApp.
+A session locked to Telegram only works in the bot, so its token is refused on WhatsApp and SMS. If Telegram is unavailable, `provider=telegram` returns `503`. You can then call `/start-verification` again without `provider`, which opens the session without a `telegram` block.
 
 ## 3. QR Code API (Lovable)
 

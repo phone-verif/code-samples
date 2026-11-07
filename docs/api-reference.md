@@ -9,15 +9,15 @@ Starts the verification flow.
 **Request Body:**
 
 -   `session_id` (string, optional): A unique session ID for each user. Created randomly if omitted.
--   `provider` (string, optional): `whatsapp` (default) or `telegram`. `telegram` can't be combined with `flow=age`.
+-   `provider` (string, optional): `any` (default), `whatsapp` or `telegram`. `any` opens the session on every channel and the first one the user completes wins. The other two lock it to that channel.
 
 **Response:**
 
 -   `session.validation_token` (string): A unique token for the verification flow.
 -   `session.status` (string): The session status, `pending` at the start.
--   `session.provider` (string): `telegram`. Present on Telegram sessions only.
+-   `session.provider` (string): `any` until a channel completes the session, then `whatsapp` or `telegram`. Absent with `provider=whatsapp`.
 -   `whatsapp.deeplink` (string): A link that the user can use to complete the verification in WhatsApp. Also available as `whatsapp.qr_code_url` and `whatsapp.direct_link`.
--   `telegram` (object): Returned in place of `whatsapp` and `sms` on a Telegram session.
+-   `telegram` (object): Absent with `provider=whatsapp` or when Telegram is unavailable. With `provider=telegram`, returned in place of `whatsapp` and `sms`.
     -   `bot_username` (string): The username of the Telegram bot.
     -   `deeplink` (string): A tracked link that opens the bot.
     -   `qr_code_url` (string): A tracked link to encode as a QR code.
@@ -25,7 +25,7 @@ Starts the verification flow.
 
 **Errors:**
 
--   `400`: Invalid parameters, including an unknown `provider` or `provider=telegram` with `flow=age`.
+-   `400`: Invalid parameters, including an unknown `provider`.
 -   `503`: `TELEGRAM_UNAVAILABLE`, when `provider=telegram` was requested and Telegram is unavailable.
 
 ## POST https://api.phone-verif.com/check-verification-status
@@ -40,7 +40,7 @@ Checks the verification status.
 
 -   `session.status` (string): The verification status, for example `pending`, `opened`, `verified` or `expired`.
 -   `session.validated_phone_number` (string): The phone number that was verified, in digits with no `+`.
--   `session.provider` (string): `telegram`. Present on Telegram sessions only.
+-   `session.provider` (string): `any` until a channel completes the session, then `whatsapp` or `telegram`. Absent with `provider=whatsapp`.
 -   `session.telegram` (object): The Telegram account that completed the session. Present on verified `flow=phone` Telegram sessions only.
     -   `user_id` (integer): The numeric Telegram account ID. It isn't the Phone-Verif `user_id`.
     -   `username` (string or null)

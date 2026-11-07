@@ -4,8 +4,8 @@ info:
   version: 1.1.0
   summary: Verify phone numbers with one message from the user.
   description: |
-    Reverse OTP over WhatsApp, with Telegram as an optional channel. Start a
-    session, show the user a link or QR code, and receive the verified number
+    Reverse OTP over WhatsApp, SMS and Telegram. Start a session, show the user
+    a link or QR code on any of them, and receive the verified number
     by signed webhook. Guide: https://phone-verif.com/integration-guide.md
   license:
     name: Proprietary
@@ -232,9 +232,11 @@ components:
       default: phone
     Provider:
       type: string
-      enum: [whatsapp, telegram]
-      default: whatsapp
-      description: telegram can't be combined with flow=age.
+      enum: [any, whatsapp, telegram]
+      default: any
+      description: >-
+        any opens the session on every channel and the first to complete it
+        wins. whatsapp and telegram lock it to that channel.
     SessionStatus:
       type: string
       enum: [pending, qr_code_scanned, whatsapp_previewed, opened, verified, sms_validated]
@@ -276,7 +278,7 @@ components:
         external_id: { type: string, description: 'flow=login only, when linked.' }
         match: { type: boolean, description: flow=2fa only. False when someone else replied. }
         age: { $ref: '#/components/schemas/Age' }
-        provider: { type: string, enum: [telegram], description: Present on Telegram sessions only. }
+        provider: { type: string, enum: [any, whatsapp, telegram], description: 'any until a channel completes the session, then that channel. Absent on a session locked to WhatsApp.' }
         telegram: { $ref: '#/components/schemas/TelegramIdentity' }
     SessionEnvelope:
       type: object
@@ -290,7 +292,7 @@ components:
             age_verification: { type: string, format: uri, description: Present while the age check is pending. }
         whatsapp:
           type: object
-          description: Absent on Telegram sessions.
+          description: Absent on a session locked to Telegram.
           properties:
             number: { type: string }
             deeplink: { type: string, format: uri, description: 'Records the scan, then opens WhatsApp.' }
@@ -298,14 +300,14 @@ components:
             direct_link: { type: string, format: uri, description: Opens WhatsApp directly. }
         sms:
           type: object
-          description: SMS fallback. Absent on Telegram sessions.
+          description: SMS fallback. Absent on a session locked to Telegram.
           properties:
             number: { type: string }
             qr_code_url: { type: string }
             direct_link: { type: string }
         telegram:
           type: object
-          description: Present on Telegram sessions only.
+          description: Absent on a session locked to WhatsApp, and when Telegram is unavailable.
           properties:
             bot_username: { type: string }
             deeplink: { type: string, format: uri }
@@ -348,7 +350,7 @@ components:
         external_id: { type: string, description: 'flow=login only, when linked.' }
         match: { type: boolean, description: flow=2fa only. }
         age: { $ref: '#/components/schemas/Age' }
-        provider: { type: string, enum: [telegram] }
+        provider: { type: string, enum: [whatsapp, telegram], description: The channel that completed the session. Absent on a session locked to WhatsApp. }
         telegram: { $ref: '#/components/schemas/TelegramIdentity' }
     AgeWebhook:
       type: object
