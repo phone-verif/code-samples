@@ -10,7 +10,7 @@ A: Reverse OTP is more secure than SMS OTP because it is not vulnerable to SIM s
 
 **Q: Can users verify through Telegram instead of WhatsApp?**
 
-A: Yes. Add `provider=telegram` when you call `/start-verification`. The user opens our Telegram bot, presses Start and shares their own phone number. You receive the same webhook and status result as on WhatsApp, and it uses the same credits. Telegram isn't available with `flow=age`, and WhatsApp stays the default.
+A: Yes. Every session is open to Telegram by default: show `telegram.deeplink` from the `/start-verification` response. The user opens our Telegram bot, presses Start and shares their own phone number. You receive the same webhook and status result as on WhatsApp, and it uses the same credits. To lock a session to one channel, send `provider=telegram` or `provider=whatsapp`.
 
 **Q: How much does Reverse OTP cost?**
 

@@ -2,7 +2,7 @@
 
 Sample integrations for [Phone-Verif](https://phone-verif.com), which verifies phone numbers with reverse OTP. Instead of receiving an SMS code, your user sends one pre-filled WhatsApp message and you get the verified number.
 
-Telegram is also available as an optional channel.
+Telegram is available on every session too.
 
 ## How it works
 
@@ -60,7 +60,7 @@ In production, use [webhooks](https://phone-verif.com/integration-guide) rather 
 
 ### Verify through Telegram
 
-Add `provider` when you start the session, then show `telegram.deeplink` instead:
+Show `telegram.deeplink` from the response next to the WhatsApp link, and the first channel the user completes wins. To lock a session to the bot, add `provider`:
 
 ```json
 {"session_id": "user-123", "provider": "telegram"}
